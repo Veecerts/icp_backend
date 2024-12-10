@@ -1,0 +1,25 @@
+[package]
+name = "veecerts-backend"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+members = [".", "migration", "entity"]
+
+[dependencies]
+actix-web = "4.9.0"
+async-graphql = "7.0.11"
+async-graphql-actix-web = "7.0.11"
+dotenv = "0.15.0"
+log = "0.4.22"
+sea-orm = { version = "1.1.1", features = ["sqlx-postgres", "runtime-tokio-native-tls", "macros", "debug-print", "with-json", "with-chrono"] }
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
+uuid = { version = "1.11.0", features = ["v4"] }
+entity = { path = "entity" }
+migration = { path = "migration" }
+bcrypt = "0.16.0"
+actix-cors = "0.7.0"
+serde = { version = "1.0.215", features = ["derive"] }
+chrono = { version = "0.4.38", features = ["serde"] }
+jsonwebtoken = "9.3.0"
