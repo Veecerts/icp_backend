@@ -4,32 +4,36 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "subscription_package")]
+#[sea_orm(table_name = "client_usage")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     #[sea_orm(unique)]
     pub uuid: Uuid,
-    pub name: String,
+    #[sea_orm(unique)]
+    pub client_id: i64,
     #[sea_orm(column_type = "Double")]
-    pub price: f64,
-    #[sea_orm(column_type = "Double")]
-    pub storage_capacity_mb: f64,
-    pub monthly_requests: i64,
-    pub max_allowed_sessions: i32,
+    pub used_storage_mb: f64,
+    pub active_sessions: i32,
     pub date_added: DateTime,
     pub last_updated: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::client_package_subscription::Entity")]
-    ClientPackageSubscription,
+    #[sea_orm(
+        belongs_to = "super::client::Entity",
+        from = "Column::ClientId",
+        to = "super::client::Column::Id",
+        on_update = "Cascade",
+        on_delete = "Restrict"
+    )]
+    Client,
 }
 
-impl Related<super::client_package_subscription::Entity> for Entity {
+impl Related<super::client::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::ClientPackageSubscription.def()
+        Relation::Client.def()
     }
 }
 

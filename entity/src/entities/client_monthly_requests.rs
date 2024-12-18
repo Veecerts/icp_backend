@@ -4,16 +4,16 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
-#[sea_orm(table_name = "client_auth_token")]
+#[sea_orm(table_name = "client_monthly_requests")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     #[sea_orm(unique)]
     pub uuid: Uuid,
-    pub token: String,
     pub client_id: i64,
+    pub requests: i64,
     pub date_added: DateTime,
-    pub expires_at: DateTime,
+    pub last_updated: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -6,6 +6,12 @@ pub struct ENV {
     pub db_url: String,
     pub allowed_origns: String,
     pub secret_key: String,
+    pub icp_agent_endpoint: String,
+    pub canister_principal_id: String,
+    pub pinata_api_key: String,
+    pub pinata_api_secret: String,
+    pub pinata_jwt: String,
+    pub pinata_ipfs_gateway: String,
 }
 
 impl ENV {
@@ -24,12 +30,34 @@ impl ENV {
         let secret_key =
             env::var("SECRET_KEY").expect("SECRET_KEY environment variable must be set");
 
+        let icp_agent_endpoint = env::var("ICP_AGENT_ENDPOINT")
+            .expect("ICP_AGENT_ENDPOINT environment variable must be set");
+
+        let canister_principal_id = env::var("CANISTER_PRINCIPAL_ID")
+            .expect("CANISTER_PRINCIPAL_ID environment variable must be set");
+
+        let pinata_api_key =
+            env::var("PINATA_API_KEY").expect("PINATA_API_KEY environment variable must be set");
+        let pinata_api_secret = env::var("PINATA_API_SECRET")
+            .expect("PINATA_API_SECRET environment variable must be set");
+        let pinata_jwt =
+            env::var("PINATA_JWT").expect("PINATA_JWT environment variable must be set");
+
+        let pinata_ipfs_gateway = env::var("PINATA_IPFS_GATEWAY")
+            .expect("PINATA_IPFS_GATEWAY environment variable must be set");
+
         return ENV {
             port,
             addrs,
             db_url,
             allowed_origns,
             secret_key,
+            icp_agent_endpoint,
+            canister_principal_id,
+            pinata_api_key,
+            pinata_api_secret,
+            pinata_jwt,
+            pinata_ipfs_gateway,
         };
     }
 }

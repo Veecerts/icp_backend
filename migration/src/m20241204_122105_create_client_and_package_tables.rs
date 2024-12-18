@@ -14,6 +14,12 @@ const SUBSCRIPTION_PACKAGE_UUID_INDEX: &str = "idx-subscription-package-uuid";
 const CLIENT_PACKAGE_SUBSCRIPTION_CLIENT_FK: &str = "fk-client-package-subscription-client";
 const CLIENT_PACKAGE_SUBSCRIPTION_PACKAGE_FK: &str = "fk-client-package-subscription-package";
 
+const CLIENT_USAGE_CLIENT_FK: &str = "fk-client-usage-client";
+const CLIENT_USAGE_UUID_INDEX: &str = "idx-client-usage-uuid";
+
+const CLIENT_MONTHLY_REQUESTS_CLIENT_FK: &str = "fk-client-monthly-requests-client";
+const CLIENT_MONTHLY_REQUESTS_INDEX: &str = "idx-monthly-requests-uuid";
+
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
@@ -25,23 +31,14 @@ impl MigrationTrait for Migration {
                     .col(pk_auto(Client::Id))
                     .col(
                         uuid(Client::Uuid)
-                            .not_null()
                             .unique_key()
                             .default(Value::Uuid(default_uuid())),
                     )
-                    .col(big_integer(Client::UserId).not_null().unique_key())
+                    .col(big_integer(Client::UserId).unique_key())
                     .col(big_integer(Client::ActiveSubscriptionId))
-                    .col(string(Client::ApiSecretHash).not_null().unique_key())
-                    .col(
-                        date_time(Client::DateAdded)
-                            .not_null()
-                            .default(Expr::current_timestamp()),
-                    )
-                    .col(
-                        date_time(Client::LastUpdated)
-                            .not_null()
-                            .default(Expr::current_timestamp()),
-                    )
+                    .col(string(Client::ApiSecretHash).unique_key())
+                    .col(date_time(Client::DateAdded).default(Expr::current_timestamp()))
+                    .col(date_time(Client::LastUpdated).default(Expr::current_timestamp()))
                     .foreign_key(
                         ForeignKey::create()
                             .name(CLIENT_USER_FK)
@@ -57,28 +54,81 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
+                    .table(ClientUsage::Table)
+                    .if_not_exists()
+                    .col(pk_auto(ClientUsage::Id))
+                    .col(uuid(ClientUsage::Uuid).unique_key())
+                    .col(big_integer(ClientUsage::ClientId).unique_key())
+                    .col(double(ClientUsage::UsedStorageMb).default(Value::BigInt(Some(0))))
+                    .col(integer(ClientUsage::ActiveSessions).default(Value::Int(Some(0))))
+                    .col(date_time(ClientUsage::DateAdded).default(Expr::current_timestamp()))
+                    .col(date_time(ClientUsage::LastUpdated).default(Expr::current_timestamp()))
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name(CLIENT_USAGE_CLIENT_FK)
+                            .from(ClientUsage::Table, ClientUsage::ClientId)
+                            .to(Client::Table, Client::Id)
+                            .on_update(ForeignKeyAction::Cascade)
+                            .on_delete(ForeignKeyAction::Restrict),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(ClientMonthlyRequests::Table)
+                    .if_not_exists()
+                    .col(pk_auto(ClientMonthlyRequests::Id))
+                    .col(uuid(ClientMonthlyRequests::Uuid).unique_key())
+                    .col(big_integer(ClientMonthlyRequests::ClientId))
+                    .col(big_integer(ClientMonthlyRequests::Requests))
+                    .col(
+                        date_time(ClientMonthlyRequests::DateAdded)
+                            .default(Expr::current_timestamp()),
+                    )
+                    .col(
+                        date_time(ClientMonthlyRequests::LastUpdated)
+                            .default(Expr::current_timestamp()),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name(CLIENT_MONTHLY_REQUESTS_CLIENT_FK)
+                            .from(
+                                ClientMonthlyRequests::Table,
+                                ClientMonthlyRequests::ClientId,
+                            )
+                            .to(Client::Table, Client::Id)
+                            .on_update(ForeignKeyAction::Cascade)
+                            .on_delete(ForeignKeyAction::Restrict),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
                     .table(SubscriptionPackage::Table)
                     .if_not_exists()
                     .col(pk_auto(SubscriptionPackage::Id))
                     .col(
                         uuid(SubscriptionPackage::Uuid)
-                            .not_null()
                             .unique_key()
                             .default(Value::Uuid(default_uuid())),
                     )
-                    .col(string(SubscriptionPackage::Name).not_null())
-                    .col(float(SubscriptionPackage::Price).not_null())
-                    .col(big_integer(SubscriptionPackage::StorageCapacityMb).not_null())
-                    .col(big_integer(SubscriptionPackage::MonthlyRequests).not_null())
-                    .col(integer(SubscriptionPackage::MaxAllowedSessions).not_null())
+                    .col(string(SubscriptionPackage::Name))
+                    .col(double(SubscriptionPackage::Price))
+                    .col(double(SubscriptionPackage::StorageCapacityMb))
+                    .col(big_integer(SubscriptionPackage::MonthlyRequests))
+                    .col(integer(SubscriptionPackage::MaxAllowedSessions))
                     .col(
                         date_time(SubscriptionPackage::DateAdded)
-                            .not_null()
                             .default(Expr::current_timestamp()),
                     )
                     .col(
                         date_time(SubscriptionPackage::LastUpdated)
-                            .not_null()
                             .default(Expr::current_timestamp()),
                     )
                     .to_owned(),
@@ -93,19 +143,19 @@ impl MigrationTrait for Migration {
                     .col(pk_auto(ClientPackageSubscription::Id))
                     .col(
                         uuid(ClientPackageSubscription::Uuid)
-                            .not_null()
                             .unique_key()
                             .default(Value::Uuid(default_uuid())),
                     )
-                    .col(big_integer(ClientPackageSubscription::ClientId).not_null())
-                    .col(big_integer(ClientPackageSubscription::SubscriptionPackageId).not_null())
-                    .col(float(ClientPackageSubscription::Amount).not_null())
+                    .col(big_integer(ClientPackageSubscription::ClientId))
+                    .col(big_integer(
+                        ClientPackageSubscription::SubscriptionPackageId,
+                    ))
+                    .col(float(ClientPackageSubscription::Amount))
                     .col(
                         date_time(ClientPackageSubscription::DateAdded)
-                            .not_null()
                             .default(Expr::current_timestamp()),
                     )
-                    .col(date_time(ClientPackageSubscription::ExpiresAt).not_null())
+                    .col(date_time(ClientPackageSubscription::ExpiresAt))
                     .foreign_key(
                         ForeignKey::create()
                             .name(CLIENT_PACKAGE_SUBSCRIPTION_CLIENT_FK)
@@ -161,6 +211,28 @@ impl MigrationTrait for Migration {
         manager
             .create_index(
                 Index::create()
+                    .name(CLIENT_USAGE_UUID_INDEX)
+                    .if_not_exists()
+                    .table(ClientUsage::Table)
+                    .col(ClientUsage::Uuid)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name(CLIENT_MONTHLY_REQUESTS_INDEX)
+                    .if_not_exists()
+                    .table(ClientMonthlyRequests::Table)
+                    .col(ClientMonthlyRequests::Uuid)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
                     .name(SUBSCRIPTION_PACKAGE_UUID_INDEX)
                     .if_not_exists()
                     .table(SubscriptionPackage::Table)
@@ -197,6 +269,26 @@ impl MigrationTrait for Migration {
                     .name(CLIENT_UUID_INDEX)
                     .if_exists()
                     .table(Client::Table)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .drop_index(
+                Index::drop()
+                    .name(CLIENT_USAGE_UUID_INDEX)
+                    .if_exists()
+                    .table(ClientUsage::Table)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .drop_index(
+                Index::drop()
+                    .name(CLIENT_MONTHLY_REQUESTS_INDEX)
+                    .if_exists()
+                    .table(ClientMonthlyRequests::Table)
                     .to_owned(),
             )
             .await?;
@@ -245,6 +337,29 @@ pub enum Client {
     UserId,
     ActiveSubscriptionId,
     ApiSecretHash,
+    DateAdded,
+    LastUpdated,
+}
+
+#[derive(DeriveIden)]
+pub enum ClientUsage {
+    Table,
+    Id,
+    Uuid,
+    ClientId,
+    UsedStorageMb,
+    ActiveSessions,
+    DateAdded,
+    LastUpdated,
+}
+
+#[derive(DeriveIden)]
+pub enum ClientMonthlyRequests {
+    Table,
+    Id,
+    Uuid,
+    ClientId,
+    Requests,
     DateAdded,
     LastUpdated,
 }

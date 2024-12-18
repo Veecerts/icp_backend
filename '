@@ -1,5 +1,5 @@
 use async_graphql::*;
-use entity::entities::{client_package_subscription, subscription_package};
+use entity::entities::subscription_package;
 
 #[derive(SimpleObject)]
 pub struct SubscriptionPackageType {
@@ -35,25 +35,8 @@ pub struct ClientPackageSubscriptionType {
     pub id: ID,
     pub uuid: String,
     pub client_id: i64,
-
-    #[graphql(skip)]
     pub subscription_package_id: i64,
-
     pub amount: f32,
     pub date_added: String,
     pub expires_at: String,
-}
-
-impl From<client_package_subscription::Model> for ClientPackageSubscriptionType {
-    fn from(value: client_package_subscription::Model) -> Self {
-        Self {
-            id: value.id.into(),
-            uuid: value.uuid.to_string(),
-            client_id: value.client_id,
-            subscription_package_id: value.subscription_package_id,
-            amount: value.amount,
-            date_added: value.date_added.to_string(),
-            expires_at: value.expires_at.to_string(),
-        }
-    }
 }

@@ -21,8 +21,10 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::asset::Entity")]
-    Asset,
+    #[sea_orm(has_many = "super::client_auth_token::Entity")]
+    ClientAuthToken,
+    #[sea_orm(has_many = "super::client_monthly_requests::Entity")]
+    ClientMonthlyRequests,
     #[sea_orm(
         belongs_to = "super::client_package_subscription::Entity",
         from = "Column::ActiveSubscriptionId",
@@ -31,6 +33,10 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     ClientPackageSubscription,
+    #[sea_orm(has_one = "super::client_usage::Entity")]
+    ClientUsage,
+    #[sea_orm(has_many = "super::folder::Entity")]
+    Folder,
     #[sea_orm(
         belongs_to = "super::user::Entity",
         from = "Column::UserId",
@@ -41,15 +47,33 @@ pub enum Relation {
     User,
 }
 
-impl Related<super::asset::Entity> for Entity {
+impl Related<super::client_auth_token::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Asset.def()
+        Relation::ClientAuthToken.def()
+    }
+}
+
+impl Related<super::client_monthly_requests::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ClientMonthlyRequests.def()
     }
 }
 
 impl Related<super::client_package_subscription::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ClientPackageSubscription.def()
+    }
+}
+
+impl Related<super::client_usage::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ClientUsage.def()
+    }
+}
+
+impl Related<super::folder::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Folder.def()
     }
 }
 
