@@ -1,5 +1,5 @@
 use async_graphql::*;
-use chrono::Utc;
+use chrono::{Datelike, Utc};
 use entity::entities::{client, client_package_subscription, subscription_package, user};
 use sea_orm::{entity::*, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use std::{
@@ -52,21 +52,30 @@ impl UserClientMutations {
                     let client = client::ActiveModel {
                         uuid: Set(uuid),
                         user_id: Set(user.id as i64),
-                        active_subscription_id: Set(package.id as i64),
+                        active_subscription_id: Set(None),
                         api_secret_hash: Set(api_secret),
                         ..Default::default()
                     };
                     client.insert(db).await?
                 };
+                let today = Utc::now().naive_utc();
+                let one_month_ahead = today
+                    .with_month(today.month() + 1)
+                    .unwrap_or_else(|| today.checked_add_months(chrono::Months::new(1)).unwrap());
+
                 let client_package = client_package_subscription::ActiveModel {
                     uuid: Set(Uuid::new_v4()),
                     client_id: Set(client.id as i64),
                     subscription_package_id: Set(package.id as i64),
                     amount: Set(package.price as f32),
+                    expires_at: Set(one_month_ahead),
                     ..Default::default()
                 };
 
                 let client_package = client_package.insert(db).await?;
+                let mut client: client::ActiveModel = client.into();
+                client.active_subscription_id = Set(Some(client_package.id as i64));
+                client.update(db).await?;
                 Ok(client_package.into())
             } else {
                 Err(Error::new(format!(

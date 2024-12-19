@@ -2,7 +2,7 @@ use async_graphql::*;
 use sea_orm::DatabaseConnection;
 
 use crate::apps::{
-    assets::graphql::mutations::assets::AssetMutations,
+    assets::graphql::{mutations::assets::AssetMutations, queries::assets::AssetQueries},
     users::graphql::{
         mutations::{auth::UsersAuthMutations, clients::UserClientMutations},
         queries::{clients::UserClientQueries, users::UserQueries},
@@ -10,7 +10,7 @@ use crate::apps::{
 };
 
 #[derive(MergedObject, Default)]
-pub struct Query(UserQueries, UserClientQueries);
+pub struct Query(UserQueries, UserClientQueries, AssetQueries);
 
 #[derive(MergedObject, Default)]
 pub struct Mutation(UsersAuthMutations, UserClientMutations, AssetMutations);

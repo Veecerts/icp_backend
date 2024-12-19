@@ -11,6 +11,7 @@ pub struct Model {
     #[sea_orm(unique)]
     pub uuid: Uuid,
     pub name: String,
+    pub logo_hash: String,
     pub description: String,
     pub client_id: i64,
     pub date_added: DateTime,

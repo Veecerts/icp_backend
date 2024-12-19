@@ -2,6 +2,7 @@ use async_graphql::*;
 use candid::{Decode, Encode, Principal};
 use chrono::Utc;
 use ic_agent::Agent;
+use log::info;
 use serde::Serialize;
 
 use crate::config::settings::ENV;
@@ -68,15 +69,15 @@ pub struct NFTCollectionDetails {
     pub symbol: String,
 }
 
-#[derive(candid::CandidType, candid::Deserialize, Debug)]
-pub struct CreateNFTSuccess {
-    pub txn_id: u128,
-    pub nft: NFTCollectionDetails,
-}
+// #[derive(candid::CandidType, candid::Deserialize, Debug)]
+// pub struct CreateNFTSuccess {
+//     pub txn_id: u128,
+//     pub nft: NFTCollectionDetails,
+// }
 
 #[derive(candid::CandidType, candid::Deserialize, Debug)]
 pub enum CreateNFTResult {
-    Ok(CreateNFTSuccess),
+    Ok((u128, NFTCollectionDetails)),
     Err(NFTError),
 }
 
@@ -151,6 +152,7 @@ impl Contract {
 
         let result = Decode!(&response, CreateNFTResult)?;
 
+        info!("DECODED {:?}", &result);
         Ok(result)
     }
 }

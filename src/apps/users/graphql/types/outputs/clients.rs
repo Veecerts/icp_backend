@@ -1,5 +1,35 @@
 use async_graphql::*;
-use entity::entities::{client_package_subscription, subscription_package};
+use entity::entities::{client, client_package_subscription, subscription_package};
+
+#[derive(SimpleObject)]
+pub struct ClientType {
+    pub id: ID,
+    pub uuid: String,
+
+    #[graphql(skip)]
+    pub user_id: i64,
+
+    #[graphql(skip)]
+    pub active_subscription_id: Option<i64>,
+
+    pub api_secret_hash: String,
+    pub date_added: String,
+    pub last_updated: String,
+}
+
+impl From<client::Model> for ClientType {
+    fn from(value: client::Model) -> Self {
+        Self {
+            id: value.id.into(),
+            uuid: value.uuid.to_string(),
+            user_id: value.user_id,
+            active_subscription_id: value.active_subscription_id,
+            api_secret_hash: value.api_secret_hash,
+            date_added: value.date_added.to_string(),
+            last_updated: value.last_updated.to_string(),
+        }
+    }
+}
 
 #[derive(SimpleObject)]
 pub struct SubscriptionPackageType {

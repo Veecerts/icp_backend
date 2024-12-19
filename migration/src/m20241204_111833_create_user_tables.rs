@@ -53,9 +53,9 @@ impl MigrationTrait for Migration {
                             .unique_key()
                             .default(Value::Uuid(default_uuid())),
                     )
-                    .col(string(Profile::FirstName))
-                    .col(string(Profile::LastName))
-                    .col(string(Profile::ImageHash))
+                    .col(ColumnDef::new(Profile::FirstName).string().null())
+                    .col(ColumnDef::new(Profile::LastName).string().null())
+                    .col(ColumnDef::new(Profile::ImageHash).string().null())
                     .col(big_integer(Profile::UserId).not_null().unique_key())
                     .col(
                         date_time(Profile::DateAdded)

@@ -12,7 +12,7 @@ pub struct Model {
     pub uuid: Uuid,
     #[sea_orm(unique)]
     pub user_id: i64,
-    pub active_subscription_id: i64,
+    pub active_subscription_id: Option<i64>,
     #[sea_orm(unique)]
     pub api_secret_hash: String,
     pub date_added: DateTime,

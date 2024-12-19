@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use async_graphql::*;
-use entity::entities::{auth_token, user};
+use entity::entities::{auth_token, profile, user};
 use sea_orm::{entity::*, sqlx::types::chrono, DatabaseConnection, QueryFilter, Set};
 use uuid::Uuid;
 
@@ -35,6 +35,14 @@ impl UsersAuthMutations {
             ..Default::default()
         };
         let new_user: user::Model = new_user.insert(db).await?;
+
+        let profile = profile::ActiveModel {
+            uuid: Set(Uuid::new_v4()),
+            user_id: Set(new_user.id as i64),
+            ..Default::default()
+        };
+        profile.insert(db).await?;
+
         Ok(new_user.into())
     }
 

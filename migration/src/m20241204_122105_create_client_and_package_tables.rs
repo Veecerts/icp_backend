@@ -35,7 +35,11 @@ impl MigrationTrait for Migration {
                             .default(Value::Uuid(default_uuid())),
                     )
                     .col(big_integer(Client::UserId).unique_key())
-                    .col(big_integer(Client::ActiveSubscriptionId))
+                    .col(
+                        ColumnDef::new(Client::ActiveSubscriptionId)
+                            .big_integer()
+                            .null(),
+                    )
                     .col(string(Client::ApiSecretHash).unique_key())
                     .col(date_time(Client::DateAdded).default(Expr::current_timestamp()))
                     .col(date_time(Client::LastUpdated).default(Expr::current_timestamp()))

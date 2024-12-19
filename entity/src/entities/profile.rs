@@ -10,9 +10,9 @@ pub struct Model {
     pub id: i32,
     #[sea_orm(unique)]
     pub uuid: Uuid,
-    pub first_name: String,
-    pub last_name: String,
-    pub image_hash: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub image_hash: Option<String>,
     #[sea_orm(unique)]
     pub user_id: i64,
     pub date_added: DateTime,

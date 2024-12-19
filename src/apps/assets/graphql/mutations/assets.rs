@@ -68,38 +68,44 @@ impl AssetMutations {
                         )));
                     }
                 } else {
-                    let mut logo_url: Option<String> = None;
-                    if let Some(logo) = input.logo {
-                        let value = logo.value(ctx)?;
-                        if let Some(content_type) = value.content_type {
-                            if !content_type.starts_with("image") {
-                                return Err(Error::new("Please provide a valid image"));
-                            }
-                            let pinata_res = Pinata::pin_file(value.content).await?;
-                            logo_url = Some(Pinata::build_url(pinata_res.ipfs_hash));
+                    let value = input.logo.value(ctx)?;
+                    if let Some(content_type) = value.content_type {
+                        if !content_type.starts_with("image") {
+                            return Err(Error::new("Please provide a valid image"));
                         }
-                    }
-                    let count = folder::Entity::find().count(db).await?;
-                    let symbol = format_id(count + 1);
-                    let result =
-                        Contract::create_nft(&input.name, &symbol, &input.description, &logo_url)
-                            .await?;
 
-                    if let CreateNFTResult::Ok(res) = result {
-                        let folder = folder::ActiveModel {
-                            id: Set(res.nft.id as i32),
-                            uuid: Set(Uuid::new_v4()),
-                            name: Set(input.name),
-                            description: Set(input.description),
-                            client_id: Set(client.id as i64),
-                            ..Default::default()
-                        };
-                        let folder = folder.insert(db).await?;
-                        Ok(folder.into())
-                    } else if let CreateNFTResult::Err(err) = result {
-                        return Err(Error::new(format!("Contract error: {}", err)));
+                        let pinata_res = Pinata::pin_file(value.content).await?;
+                        let logo_url = Some(Pinata::build_url(pinata_res.ipfs_hash.clone()));
+                        let count = folder::Entity::find().count(db).await?;
+                        let symbol = format_id(count + 1);
+
+                        let result = Contract::create_nft(
+                            &input.name,
+                            &symbol,
+                            &input.description,
+                            &logo_url,
+                        )
+                        .await?;
+
+                        if let CreateNFTResult::Ok(res) = result {
+                            let folder = folder::ActiveModel {
+                                id: Set(res.1.id as i32),
+                                uuid: Set(Uuid::new_v4()),
+                                name: Set(input.name),
+                                logo_hash: Set(pinata_res.ipfs_hash),
+                                description: Set(input.description),
+                                client_id: Set(client.id as i64),
+                                ..Default::default()
+                            };
+                            let folder = folder.insert(db).await?;
+                            Ok(folder.into())
+                        } else if let CreateNFTResult::Err(err) = result {
+                            return Err(Error::new(format!("Contract error: {}", err)));
+                        } else {
+                            return Err(Error::new("Failed to create NFT"));
+                        }
                     } else {
-                        return Err(Error::new("Failed to create NFT"));
+                        return Err(Error::new("Unable to verify image type"));
                     }
                 }
             } else {
@@ -195,6 +201,11 @@ impl AssetMutations {
                                     asset.name = Set(input.name);
                                     asset.description = Set(input.description);
                                     asset.last_updated = Set(Utc::now().naive_utc());
+                                    if let Some(content_type) = file_value.content_type {
+                                        asset.content_type = Set(content_type)
+                                    } else {
+                                        return Err(Error::new("Failed to identify content_type"));
+                                    }
 
                                     let asset = asset.update(db).await?;
                                     return Ok(asset.into());
@@ -227,19 +238,24 @@ impl AssetMutations {
                             .await?;
 
                             if let MintNFTResult::Ok(res) = result {
-                                let new_asset = asset::ActiveModel {
-                                    uuid: Set(uuid),
-                                    name: Set(input.name),
-                                    description: Set(input.description),
-                                    folder_id: Set(input.folder_id),
-                                    nft_id: Set(res.nft.id as i64),
-                                    client_id: Set(user_client.id as i64),
-                                    ipfs_hash: Set(pinata_res.ipfs_hash),
-                                    size_mb: Set(size_in_mb),
-                                    ..Default::default()
-                                };
-                                let new_asset = new_asset.insert(db).await?;
-                                Ok(new_asset.into())
+                                if let Some(content_type) = file_value.content_type {
+                                    let new_asset = asset::ActiveModel {
+                                        uuid: Set(uuid),
+                                        name: Set(input.name),
+                                        description: Set(input.description),
+                                        folder_id: Set(input.folder_id),
+                                        nft_id: Set(res.nft.id as i64),
+                                        client_id: Set(user_client.id as i64),
+                                        ipfs_hash: Set(pinata_res.ipfs_hash),
+                                        size_mb: Set(size_in_mb),
+                                        content_type: Set(content_type),
+                                        ..Default::default()
+                                    };
+                                    let new_asset = new_asset.insert(db).await?;
+                                    Ok(new_asset.into())
+                                } else {
+                                    return Err(Error::new("Failed to identify content_type"));
+                                }
                             } else if let MintNFTResult::Err(err) = result {
                                 return Err(Error::new(format!("Contract error: {}", err)));
                             } else {

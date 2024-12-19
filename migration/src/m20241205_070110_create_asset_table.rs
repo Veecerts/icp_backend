@@ -23,6 +23,7 @@ impl MigrationTrait for Migration {
                     .col(pk_auto(Folder::Id))
                     .col(uuid(Folder::Uuid).unique_key())
                     .col(string(Folder::Name))
+                    .col(string(Folder::LogoHash))
                     .col(string(Folder::Description))
                     .col(big_integer(Folder::ClientId))
                     .col(date_time(Folder::DateAdded).default(Expr::current_timestamp()))
@@ -53,6 +54,7 @@ impl MigrationTrait for Migration {
                     .col(string(Asset::Name))
                     .col(string(Asset::Description))
                     .col(double(Asset::SizeMb))
+                    .col(string(Asset::ContentType))
                     .col(string(Asset::IpfsHash).unique_key())
                     .col(big_integer(Asset::NftId).unique_key())
                     .col(big_integer(Asset::ClientId))
@@ -137,6 +139,7 @@ pub enum Folder {
     Id,
     Uuid,
     Name,
+    LogoHash,
     Description,
     ClientId,
     DateAdded,
@@ -151,6 +154,7 @@ pub enum Asset {
     Name,
     Description,
     SizeMb,
+    ContentType,
     IpfsHash,
     NftId,
     ClientId,

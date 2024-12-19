@@ -14,6 +14,7 @@ pub struct Model {
     pub description: String,
     #[sea_orm(column_type = "Double")]
     pub size_mb: f64,
+    pub content_type: String,
     #[sea_orm(unique)]
     pub ipfs_hash: String,
     #[sea_orm(unique)]
