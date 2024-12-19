@@ -34,3 +34,24 @@ pub struct FolderQueryOptions {
     pub filter: Option<FolderFilter>,
     pub ordering: Option<FolderOrdering>,
 }
+
+#[derive(InputObject)]
+pub struct AssetFilter {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub min_size_mb: Option<f64>,
+    pub max_size_mb: Option<f64>,
+    pub content_type: Option<String>,
+}
+
+#[derive(InputObject)]
+pub struct AssetOrdering {
+    pub date_added: Option<bool>,
+    pub last_updated: Option<bool>,
+}
+
+#[derive(InputObject)]
+pub struct AssetQueryOptions {
+    pub filter: Option<AssetFilter>,
+    pub ordering: Option<AssetOrdering>,
+}

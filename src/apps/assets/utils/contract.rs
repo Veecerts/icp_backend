@@ -2,7 +2,6 @@ use async_graphql::*;
 use candid::{Decode, Encode, Principal};
 use chrono::Utc;
 use ic_agent::Agent;
-use log::info;
 use serde::Serialize;
 
 use crate::config::settings::ENV;
@@ -151,8 +150,6 @@ impl Contract {
             .await?;
 
         let result = Decode!(&response, CreateNFTResult)?;
-
-        info!("DECODED {:?}", &result);
         Ok(result)
     }
 }
