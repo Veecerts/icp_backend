@@ -5,12 +5,12 @@ use crate::apps::{
     assets::graphql::mutations::assets::AssetMutations,
     users::graphql::{
         mutations::{auth::UsersAuthMutations, clients::UserClientMutations},
-        queries::users::UserQueries,
+        queries::{clients::UserClientQueries, users::UserQueries},
     },
 };
 
 #[derive(MergedObject, Default)]
-pub struct Query(UserQueries);
+pub struct Query(UserQueries, UserClientQueries);
 
 #[derive(MergedObject, Default)]
 pub struct Mutation(UsersAuthMutations, UserClientMutations, AssetMutations);

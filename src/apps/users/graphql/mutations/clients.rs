@@ -113,12 +113,12 @@ impl UserClientMutations {
             }
         } else {
             let package = subscription_package::ActiveModel {
+                uuid: Set(Uuid::new_v4()),
                 name: Set(input.name),
                 price: Set(input.price),
                 storage_capacity_mb: Set(input.storage_capacity_mb),
                 monthly_requests: Set(input.monthly_requests),
                 max_allowed_sessions: Set(input.max_allowed_sessions),
-                last_updated: Set(Utc::now().naive_utc()),
                 ..Default::default()
             };
             let package: subscription_package::Model = package.insert(db).await?;
