@@ -1,8 +1,8 @@
 use async_graphql::*;
-use entity::entities::subscription_package;
-use sea_orm::{DatabaseConnection, EntityTrait};
+use entity::entities::{client, subscription_package, user};
+use sea_orm::{entity::*, DatabaseConnection, EntityTrait, QueryFilter};
 
-use crate::apps::users::graphql::types::outputs::clients::SubscriptionPackageType;
+use crate::apps::users::graphql::types::outputs::clients::{ClientType, SubscriptionPackageType};
 
 #[derive(Default)]
 pub struct UserClientQueries;
@@ -16,6 +16,24 @@ impl UserClientQueries {
         let db = ctx.data::<DatabaseConnection>()?;
 
         let packages = subscription_package::Entity::find().all(db).await?;
-        return Ok(packages.into_iter().map(|item| item.into()).collect());
+        Ok(packages.into_iter().map(|item| item.into()).collect())
+    }
+
+    async fn client<'ctx>(&self, ctx: &Context<'ctx>) -> Result<Option<ClientType>> {
+        let db = ctx.data::<DatabaseConnection>()?;
+        let user = ctx.data::<Option<user::Model>>()?;
+
+        if let Some(user) = user {
+            match client::Entity::find()
+                .filter(client::Column::Uuid.eq(user.id))
+                .one(db)
+                .await?
+            {
+                Some(client) => Ok(Some(client.into())),
+                None => Ok(None),
+            }
+        } else {
+            Ok(None)
+        }
     }
 }

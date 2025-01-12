@@ -4,7 +4,7 @@ use async_graphql::*;
 pub struct AssetInput {
     pub uuid: Option<ID>,
     pub name: String,
-    pub folder_id: i64,
+    pub folder_uuid: String,
     pub description: String,
     pub file: Upload,
 }

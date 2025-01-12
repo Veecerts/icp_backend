@@ -1,7 +1,7 @@
 use async_graphql::*;
-use entity::entities::{asset, folder};
+use entity::entities::{asset, client, folder};
 use sea_orm::{
-    entity::*, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect,
+    entity::*, Condition, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect,
 };
 
 #[derive(SimpleObject)]
@@ -79,6 +79,7 @@ pub struct AssetType {
     pub ipfs_hash: String,
     pub content_type: String,
     pub nft_id: i64,
+    pub size_mb: f64,
 
     #[graphql(skip)]
     pub client_id: i64,
@@ -100,10 +101,166 @@ impl From<asset::Model> for AssetType {
             ipfs_hash: value.ipfs_hash,
             content_type: value.content_type,
             nft_id: value.nft_id,
+            size_mb: value.size_mb,
             client_id: value.client_id,
             folder_id: value.folder_id,
             date_added: value.date_added.to_string(),
             last_updated: value.last_updated.to_string(),
         }
+    }
+}
+
+#[derive(SimpleObject)]
+pub struct StorageSummary {
+    pub count: u64,
+    pub total_size: u64,
+}
+
+#[derive(SimpleObject)]
+#[graphql(complex)]
+pub struct UserFileStorageSummary {
+    pub client_id: Option<i32>,
+}
+
+#[ComplexObject]
+impl UserFileStorageSummary {
+    async fn images<'ctx>(&self, ctx: &Context<'ctx>) -> Result<StorageSummary> {
+        let db = ctx.data::<DatabaseConnection>()?;
+        let mut stmt =
+            asset::Entity::find().filter(asset::Column::ContentType.starts_with("image"));
+
+        if let Some(id) = self.client_id {
+            stmt = stmt
+                .join(sea_orm::JoinType::LeftJoin, asset::Relation::Client2.def())
+                .filter(client::Column::Id.eq(id));
+        }
+
+        let result = stmt
+            .select_only()
+            .column_as(asset::Column::Id.count(), "count")
+            .column_as(asset::Column::SizeMb.sum(), "total_size")
+            .into_tuple::<(Option<u64>, Option<u64>)>()
+            .one(db)
+            .await?
+            .unwrap_or((Some(0), Some(0)));
+
+        Ok(StorageSummary {
+            count: result.0.unwrap_or(0),
+            total_size: result.1.unwrap_or(0),
+        })
+    }
+
+    async fn videos<'ctx>(&self, ctx: &Context<'ctx>) -> Result<StorageSummary> {
+        let db = ctx.data::<DatabaseConnection>()?;
+        let mut stmt =
+            asset::Entity::find().filter(asset::Column::ContentType.starts_with("video"));
+
+        if let Some(id) = self.client_id {
+            stmt = stmt
+                .join(sea_orm::JoinType::LeftJoin, asset::Relation::Client2.def())
+                .filter(client::Column::Id.eq(id));
+        }
+
+        let result = stmt
+            .select_only()
+            .column_as(asset::Column::Id.count(), "count")
+            .column_as(asset::Column::SizeMb.sum(), "total_size")
+            .into_tuple::<(Option<u64>, Option<u64>)>()
+            .one(db)
+            .await?
+            .unwrap_or((Some(0), Some(0)));
+
+        Ok(StorageSummary {
+            count: result.0.unwrap_or(0),
+            total_size: result.1.unwrap_or(0),
+        })
+    }
+
+    async fn audios<'ctx>(&self, ctx: &Context<'ctx>) -> Result<StorageSummary> {
+        let db = ctx.data::<DatabaseConnection>()?;
+        let mut stmt =
+            asset::Entity::find().filter(asset::Column::ContentType.starts_with("audio"));
+
+        if let Some(id) = self.client_id {
+            stmt = stmt
+                .join(sea_orm::JoinType::LeftJoin, asset::Relation::Client2.def())
+                .filter(client::Column::Id.eq(id));
+        }
+
+        let result = stmt
+            .select_only()
+            .column_as(asset::Column::Id.count(), "count")
+            .column_as(asset::Column::SizeMb.sum(), "total_size")
+            .into_tuple::<(Option<u64>, Option<u64>)>()
+            .one(db)
+            .await?
+            .unwrap_or((Some(0), Some(0)));
+
+        Ok(StorageSummary {
+            count: result.0.unwrap_or(0),
+            total_size: result.1.unwrap_or(0),
+        })
+    }
+
+    async fn documents<'ctx>(&self, ctx: &Context<'ctx>) -> Result<StorageSummary> {
+        let db = ctx.data::<DatabaseConnection>()?;
+        let mut stmt = asset::Entity::find().filter(
+            Condition::any()
+                .add(asset::Column::ContentType.starts_with("application"))
+                .add(asset::Column::ContentType.starts_with("text")),
+        );
+
+        if let Some(id) = self.client_id {
+            stmt = stmt
+                .join(sea_orm::JoinType::LeftJoin, asset::Relation::Client2.def())
+                .filter(client::Column::Id.eq(id));
+        }
+
+        let result = stmt
+            .select_only()
+            .column_as(asset::Column::Id.count(), "count")
+            .column_as(asset::Column::SizeMb.sum(), "total_size")
+            .into_tuple::<(Option<u64>, Option<u64>)>()
+            .one(db)
+            .await?
+            .unwrap_or((Some(0), Some(0)));
+
+        Ok(StorageSummary {
+            count: result.0.unwrap_or(0),
+            total_size: result.1.unwrap_or(0),
+        })
+    }
+
+    async fn others<'ctx>(&self, ctx: &Context<'ctx>) -> Result<StorageSummary> {
+        let db = ctx.data::<DatabaseConnection>()?;
+        let mut stmt = asset::Entity::find().filter(
+            Condition::any()
+                .add(asset::Column::ContentType.starts_with("application"))
+                .add(asset::Column::ContentType.starts_with("audio"))
+                .add(asset::Column::ContentType.starts_with("video"))
+                .add(asset::Column::ContentType.starts_with("image"))
+                .add(asset::Column::ContentType.starts_with("text"))
+                .not(),
+        );
+
+        if let Some(id) = self.client_id {
+            stmt = stmt
+                .join(sea_orm::JoinType::LeftJoin, asset::Relation::Client2.def())
+                .filter(client::Column::Id.eq(id));
+        }
+
+        let result = stmt
+            .select_only()
+            .column_as(asset::Column::Id.count(), "count")
+            .column_as(asset::Column::SizeMb.sum(), "total_size")
+            .into_tuple::<(Option<u64>, Option<u64>)>()
+            .one(db)
+            .await?
+            .unwrap_or((Some(0), Some(0)));
+
+        Ok(StorageSummary {
+            count: result.0.unwrap_or(0),
+            total_size: result.1.unwrap_or(0),
+        })
     }
 }

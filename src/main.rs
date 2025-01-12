@@ -37,11 +37,16 @@ async fn get_user_from_header(
 ) -> Result<Option<user::Model>> {
     let token_str = headers
         .get("Authorization")
-        .and_then(|value| Some(value.as_ref()));
+        .map(|value| Some(value.as_ref()));
 
     if let Some(token_str) = token_str {
-        let token = decode_user_auth_token(String::from_utf8(token_str.to_vec())?, db).await?;
-        return Ok(token);
+        match token_str {
+            Some(token) => {
+                let token = decode_user_auth_token(String::from_utf8(token.to_vec())?, db).await?;
+                Ok(token)
+            }
+            _ => Ok(None),
+        }
     } else {
         Ok(None)
     }

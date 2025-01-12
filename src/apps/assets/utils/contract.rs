@@ -68,11 +68,11 @@ pub struct NFTCollectionDetails {
     pub symbol: String,
 }
 
-// #[derive(candid::CandidType, candid::Deserialize, Debug)]
-// pub struct CreateNFTSuccess {
-//     pub txn_id: u128,
-//     pub nft: NFTCollectionDetails,
-// }
+#[derive(candid::CandidType, candid::Deserialize, Debug)]
+pub struct CreateNFTSuccess {
+    pub txn_id: u128,
+    pub nft: NFTCollectionDetails,
+}
 
 #[derive(candid::CandidType, candid::Deserialize, Debug)]
 pub enum CreateNFTResult {
@@ -95,13 +95,13 @@ impl Contract {
     pub async fn mint_nft(
         collection_id: i64,
         uuid: &String,
-        ipfs_hash: &String,
+        ipfs_hash: &str,
     ) -> Result<MintNFTResult> {
         let (canister_id, agent) = Contract::init()?;
         let method_name = "mint_nft";
         let contract_asset = Asset {
             uuid: uuid.to_string(),
-            ipfs_hash: ipfs_hash.clone(),
+            ipfs_hash: ipfs_hash.to_owned(),
             date_added: Utc::now().to_string(),
         };
         let metadata = serde_json::to_string(&contract_asset)?;
@@ -130,7 +130,7 @@ impl Contract {
             .await?;
 
         let result = Decode!(&response, BurnNFTResult)?;
-        return Ok(result);
+        Ok(result)
     }
 
     pub async fn create_nft(
