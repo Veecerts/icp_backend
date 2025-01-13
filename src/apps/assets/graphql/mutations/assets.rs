@@ -134,6 +134,15 @@ impl AssetMutations {
 
         if let Some(folder) = folder {
             if let Some(user) = user {
+                let user_client = client::Entity::find()
+                    .filter(client::Column::UserId.eq(user.id))
+                    .one(db)
+                    .await?;
+
+                if user_client.is_none() {
+                    return Err(Error::new("User Client not found"));
+                }
+
                 let client_package = client::Entity::find()
                     .filter(client::Column::UserId.eq(user.id))
                     .join(
@@ -151,131 +160,134 @@ impl AssetMutations {
                 if let Some(client_package) = client_package {
                     let user_client = client_package.0;
 
-                    let client_usage = client_usage::Entity::find()
+                    let client_usage = match client_usage::Entity::find()
                         .filter(client_usage::Column::ClientId.eq(user_client.id))
                         .one(db)
-                        .await?;
+                        .await?
+                    {
+                        Some(usage) => usage,
+                        None => {
+                            client_usage::ActiveModel {
+                                uuid: Set(Uuid::new_v4()),
+                                client_id: Set(user_client.id.into()),
+                                used_storage_mb: Set(0.0),
+                                active_sessions: Set(0),
+                                ..Default::default()
+                            }
+                            .insert(db)
+                            .await?
+                        }
+                    };
 
-                    if let Some(client_usage) = client_usage {
-                        if let Some(package) = client_package.1 {
-                            let file_value = input.file.value(ctx)?;
-                            let file_size = file_value.size()?;
-                            let size_in_mb = bytes_to_mb(file_size);
+                    if let Some(package) = client_package.1 {
+                        let file_value = input.file.value(ctx)?;
+                        let file_size = file_value.size()?;
+                        let size_in_mb = bytes_to_mb(file_size);
 
-                            if let Some(uuid) = input.uuid {
-                                let asset = asset::Entity::find()
-                                    .filter(
-                                        asset::Column::Uuid
-                                            .eq(Uuid::from_str(uuid.to_string().as_str())?),
-                                    )
-                                    .one(db)
-                                    .await?;
+                        if let Some(uuid) = input.uuid {
+                            let asset = asset::Entity::find()
+                                .filter(
+                                    asset::Column::Uuid
+                                        .eq(Uuid::from_str(uuid.to_string().as_str())?),
+                                )
+                                .one(db)
+                                .await?;
 
-                                if let Some(asset) = asset {
-                                    if asset.client_id != user_client.id as i64 {
-                                        return Err(Error::new(
-                                            "You are not authorized to perform this action",
-                                        ));
-                                    }
-                                    let new_used_storage_mb =
-                                        client_usage.used_storage_mb - asset.size_mb + size_in_mb;
-                                    if new_used_storage_mb > package.storage_capacity_mb {
-                                        return Err(
-                                        Error::new(format!("Insuficient storage: Uploading file of {}mb will exceed your maximum storage of {}mb.", size_in_mb, package.storage_capacity_mb))
-                                    );
-                                    }
-
-                                    Pinata::unpin_file(&asset.ipfs_hash).await?;
-                                    Contract::burn_nft(format!(
-                                        "{}x{}",
-                                        asset.nft_id, asset.folder_id
-                                    ))
-                                    .await?;
-
-                                    let pin_result = Pinata::pin_file(file_value.content).await?;
-                                    let result = Contract::mint_nft(
-                                        folder.id.into(),
-                                        &asset.uuid.to_string(),
-                                        &pin_result.ipfs_hash,
-                                    )
-                                    .await?;
-
-                                    if let MintNFTResult::Ok(res) = result {
-                                        let mut asset: asset::ActiveModel = asset.into();
-                                        asset.nft_id = Set(res.nft.id as i64);
-                                        asset.size_mb = Set(size_in_mb);
-                                        asset.ipfs_hash = Set(pin_result.ipfs_hash);
-                                        asset.folder_id = Set(folder.id.into());
-                                        asset.name = Set(input.name);
-                                        asset.description = Set(input.description);
-                                        asset.last_updated = Set(Utc::now().naive_utc());
-                                        if let Some(content_type) = file_value.content_type {
-                                            asset.content_type = Set(content_type)
-                                        } else {
-                                            return Err(Error::new(
-                                                "Failed to identify content_type",
-                                            ));
-                                        }
-
-                                        let asset = asset.update(db).await?;
-                                        Ok(asset.into())
-                                    } else if let MintNFTResult::Err(err) = result {
-                                        return Err(Error::new(format!("Contract error: {}", err)));
-                                    } else {
-                                        return Err(Error::new("Failed to mint nft"));
-                                    }
-                                } else {
-                                    Err(Error::new(format!(
-                                        "Entity with uuid {} was not found",
-                                        &uuid.to_string()
-                                    )))
+                            if let Some(asset) = asset {
+                                if asset.client_id != user_client.id as i64 {
+                                    return Err(Error::new(
+                                        "You are not authorized to perform this action",
+                                    ));
                                 }
-                            } else {
-                                let new_used_storage_mb = client_usage.used_storage_mb + size_in_mb;
+                                let new_used_storage_mb =
+                                    client_usage.used_storage_mb - asset.size_mb + size_in_mb;
                                 if new_used_storage_mb > package.storage_capacity_mb {
                                     return Err(
-                                    Error::new(format!("Insuficient storage: Uploading file of {}mb will exceed your maximum storage of {}mb.", size_in_mb, package.storage_capacity_mb))
-                                );
+                                        Error::new(format!("Insuficient storage: Uploading file of {}mb will exceed your maximum storage of {}mb.", size_in_mb, package.storage_capacity_mb))
+                                    );
                                 }
 
-                                let uuid = Uuid::new_v4();
-                                let pinata_res = Pinata::pin_file(file_value.content).await?;
+                                Pinata::unpin_file(&asset.ipfs_hash).await?;
+                                Contract::burn_nft(format!("{}x{}", asset.nft_id, asset.folder_id))
+                                    .await?;
+
+                                let pin_result = Pinata::pin_file(file_value.content).await?;
                                 let result = Contract::mint_nft(
-                                    folder.id.into(),
-                                    &uuid.to_string(),
-                                    &pinata_res.ipfs_hash,
+                                    folder.id as u64,
+                                    &asset.uuid.to_string(),
+                                    &pin_result.ipfs_hash,
                                 )
                                 .await?;
 
                                 if let MintNFTResult::Ok(res) = result {
+                                    let mut asset: asset::ActiveModel = asset.into();
+                                    asset.nft_id = Set(res.1.id as i64);
+                                    asset.size_mb = Set(size_in_mb);
+                                    asset.ipfs_hash = Set(pin_result.ipfs_hash);
+                                    asset.folder_id = Set(folder.id.into());
+                                    asset.name = Set(input.name);
+                                    asset.description = Set(input.description);
+                                    asset.last_updated = Set(Utc::now().naive_utc());
                                     if let Some(content_type) = file_value.content_type {
-                                        let new_asset = asset::ActiveModel {
-                                            uuid: Set(uuid),
-                                            name: Set(input.name),
-                                            description: Set(input.description),
-                                            folder_id: Set(folder.id.into()),
-                                            nft_id: Set(res.nft.id as i64),
-                                            client_id: Set(user_client.id as i64),
-                                            ipfs_hash: Set(pinata_res.ipfs_hash),
-                                            size_mb: Set(size_in_mb),
-                                            content_type: Set(content_type),
-                                            ..Default::default()
-                                        };
-                                        let new_asset = new_asset.insert(db).await?;
-                                        Ok(new_asset.into())
+                                        asset.content_type = Set(content_type)
                                     } else {
-                                        Err(Error::new("Failed to identify content_type"))
+                                        return Err(Error::new("Failed to identify content_type"));
                                     }
+
+                                    let asset = asset.update(db).await?;
+                                    Ok(asset.into())
                                 } else if let MintNFTResult::Err(err) = result {
                                     return Err(Error::new(format!("Contract error: {}", err)));
                                 } else {
                                     return Err(Error::new("Failed to mint nft"));
                                 }
+                            } else {
+                                Err(Error::new(format!(
+                                    "Entity with uuid {} was not found",
+                                    &uuid.to_string()
+                                )))
                             }
                         } else {
-                            Err(Error::new(
-                                "You do not currently have an active subscription",
-                            ))
+                            let new_used_storage_mb = client_usage.used_storage_mb + size_in_mb;
+                            if new_used_storage_mb > package.storage_capacity_mb {
+                                return Err(
+                                    Error::new(format!("Insuficient storage: Uploading file of {}mb will exceed your maximum storage of {}mb.", size_in_mb, package.storage_capacity_mb))
+                                );
+                            }
+
+                            let uuid = Uuid::new_v4();
+                            let pinata_res = Pinata::pin_file(file_value.content).await?;
+                            let result = Contract::mint_nft(
+                                folder.id as u64,
+                                &uuid.to_string(),
+                                &pinata_res.ipfs_hash,
+                            )
+                            .await?;
+
+                            if let MintNFTResult::Ok(res) = result {
+                                if let Some(content_type) = file_value.content_type {
+                                    let new_asset = asset::ActiveModel {
+                                        uuid: Set(uuid),
+                                        name: Set(input.name),
+                                        description: Set(input.description),
+                                        folder_id: Set(folder.id.into()),
+                                        nft_id: Set(res.1.id as i64),
+                                        client_id: Set(user_client.id as i64),
+                                        ipfs_hash: Set(pinata_res.ipfs_hash),
+                                        size_mb: Set(size_in_mb),
+                                        content_type: Set(content_type),
+                                        ..Default::default()
+                                    };
+                                    let new_asset = new_asset.insert(db).await?;
+                                    Ok(new_asset.into())
+                                } else {
+                                    Err(Error::new("Failed to identify content_type"))
+                                }
+                            } else if let MintNFTResult::Err(err) = result {
+                                return Err(Error::new(format!("Contract error: {}", err)));
+                            } else {
+                                return Err(Error::new("Failed to mint nft"));
+                            }
                         }
                     } else {
                         Err(Error::new(

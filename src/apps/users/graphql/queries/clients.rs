@@ -25,7 +25,7 @@ impl UserClientQueries {
 
         if let Some(user) = user {
             match client::Entity::find()
-                .filter(client::Column::Uuid.eq(user.id))
+                .filter(client::Column::UserId.eq(user.id as i64))
                 .one(db)
                 .await?
             {

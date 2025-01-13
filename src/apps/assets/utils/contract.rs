@@ -22,10 +22,7 @@ pub struct NFTDetails {
 }
 
 #[derive(candid::CandidType, candid::Deserialize, Debug)]
-pub struct MintNFTSuccess {
-    pub txn_id: u128,
-    pub nft: NFTDetails,
-}
+pub struct MintNFTSuccess(pub u128, pub NFTDetails);
 
 #[derive(candid::CandidType, candid::Deserialize, Debug)]
 pub enum NFTError {
@@ -93,7 +90,7 @@ impl Contract {
     }
 
     pub async fn mint_nft(
-        collection_id: i64,
+        collection_id: u64,
         uuid: &String,
         ipfs_hash: &str,
     ) -> Result<MintNFTResult> {

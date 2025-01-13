@@ -37,14 +37,14 @@ impl From<folder::Model> for FolderType {
 
 #[ComplexObject]
 impl FolderType {
-    async fn items_count<'ctx>(&self, ctx: &Context<'ctx>) -> Result<u64> {
+    async fn items_count<'ctx>(&self, ctx: &Context<'ctx>) -> Result<i64> {
         let db = ctx.data::<DatabaseConnection>()?;
         let folder_id = self.id.parse::<i64>()?;
         let count = asset::Entity::find()
             .filter(asset::Column::FolderId.eq(folder_id))
             .count(db)
             .await?;
-        Ok(count)
+        Ok(count as i64)
     }
 
     async fn total_size<'ctx>(&self, ctx: &Context<'ctx>) -> Result<f64> {
@@ -112,8 +112,8 @@ impl From<asset::Model> for AssetType {
 
 #[derive(SimpleObject)]
 pub struct StorageSummary {
-    pub count: u64,
-    pub total_size: u64,
+    pub count: i64,
+    pub total_size: i64,
 }
 
 #[derive(SimpleObject)]
@@ -139,7 +139,7 @@ impl UserFileStorageSummary {
             .select_only()
             .column_as(asset::Column::Id.count(), "count")
             .column_as(asset::Column::SizeMb.sum(), "total_size")
-            .into_tuple::<(Option<u64>, Option<u64>)>()
+            .into_tuple::<(Option<i64>, Option<i64>)>()
             .one(db)
             .await?
             .unwrap_or((Some(0), Some(0)));
@@ -165,7 +165,7 @@ impl UserFileStorageSummary {
             .select_only()
             .column_as(asset::Column::Id.count(), "count")
             .column_as(asset::Column::SizeMb.sum(), "total_size")
-            .into_tuple::<(Option<u64>, Option<u64>)>()
+            .into_tuple::<(Option<i64>, Option<i64>)>()
             .one(db)
             .await?
             .unwrap_or((Some(0), Some(0)));
@@ -191,7 +191,7 @@ impl UserFileStorageSummary {
             .select_only()
             .column_as(asset::Column::Id.count(), "count")
             .column_as(asset::Column::SizeMb.sum(), "total_size")
-            .into_tuple::<(Option<u64>, Option<u64>)>()
+            .into_tuple::<(Option<i64>, Option<i64>)>()
             .one(db)
             .await?
             .unwrap_or((Some(0), Some(0)));
@@ -220,7 +220,7 @@ impl UserFileStorageSummary {
             .select_only()
             .column_as(asset::Column::Id.count(), "count")
             .column_as(asset::Column::SizeMb.sum(), "total_size")
-            .into_tuple::<(Option<u64>, Option<u64>)>()
+            .into_tuple::<(Option<i64>, Option<i64>)>()
             .one(db)
             .await?
             .unwrap_or((Some(0), Some(0)));
@@ -253,7 +253,7 @@ impl UserFileStorageSummary {
             .select_only()
             .column_as(asset::Column::Id.count(), "count")
             .column_as(asset::Column::SizeMb.sum(), "total_size")
-            .into_tuple::<(Option<u64>, Option<u64>)>()
+            .into_tuple::<(Option<i64>, Option<i64>)>()
             .one(db)
             .await?
             .unwrap_or((Some(0), Some(0)));
